@@ -16,10 +16,10 @@ import { DefaultPriceScaleId, isDefaultPriceScale } from './default-price-scale'
 import { GridOptions } from './grid';
 import { InvalidateMask, InvalidationLevel } from './invalidate-mask';
 import { IPriceDataSource } from './iprice-data-source';
-import { ColorType, LayoutOptions, LayoutOptionsInternal } from './layout-options';
+import { ColorType, LayoutOptions } from './layout-options';
 import { LocalizationOptions } from './localization-options';
 import { Magnet } from './magnet';
-import { DEFAULT_STRETCH_FACTOR, Pane } from './pane';
+import { DEFAULT_STRETCH_FACTOR, Pane, PaneInfo } from './pane';
 import { Point } from './point';
 import { PriceScale, PriceScaleOptions } from './price-scale';
 import { Series, SeriesOptionsInternal } from './series';
@@ -28,22 +28,90 @@ import { LogicalRange, TimePointIndex, TimeScalePoint } from './time-data';
 import { TimeScale, TimeScaleOptions } from './time-scale';
 import { Watermark, WatermarkOptions } from './watermark';
 
+/**
+ * Represents options for how the chart is scrolled by the mouse and touch gestures.
+ */
 export interface HandleScrollOptions {
+	/**
+	 * Enable scrolling with the mouse wheel.
+	 *
+	 * @defaultValue `true`
+	 */
 	mouseWheel: boolean;
+
+	/**
+	 * Enable scrolling by holding down the left mouse button and moving the mouse.
+	 *
+	 * @defaultValue `true`
+	 */
 	pressedMouseMove: boolean;
+
+	/**
+	 * Enable horizontal touch scrolling.
+	 *
+	 * When enabled the chart handles touch gestures that would normally scroll the webpage horizontally.
+	 *
+	 * @defaultValue `true`
+	 */
 	horzTouchDrag: boolean;
+
+	/**
+	 * Enable vertical touch scrolling.
+	 *
+	 * When enabled the chart handles touch gestures that would normally scroll the webpage vertically.
+	 *
+	 * @defaultValue `true`
+	 */
 	vertTouchDrag: boolean;
 }
 
+/**
+ * Represents options for how the chart is scaled by the mouse and touch gestures.
+ */
 export interface HandleScaleOptions {
+	/**
+	 * Enable scaling with the mouse wheel.
+	 *
+	 * @defaultValue `true`
+	 */
 	mouseWheel: boolean;
+
+	/**
+	 * Enable scaling with pinch/zoom gestures.
+	 *
+	 * @defaultValue `true`
+	 */
 	pinch: boolean;
+
+	/**
+	 * Enable scaling the price and/or time scales by holding down the left mouse button and moving the mouse.
+	 */
 	axisPressedMouseMove: AxisPressedMouseMoveOptions | boolean;
+
+	/**
+	 * Enable resetting scaling by double-clicking the left mouse button.
+	 *
+	 * @defaultValue `true`
+	 */
 	axisDoubleClickReset: boolean;
 }
 
+/**
+ * Represents options for enabling or disabling kinetic scrolling with mouse and touch gestures.
+ */
 export interface KineticScrollOptions {
+	/**
+	 * Enable kinetic scroll with touch gestures.
+	 *
+	 * @defaultValue `true`
+	 */
 	touch: boolean;
+
+	/**
+	 * Enable kinetic scroll with the mouse.
+	 *
+	 * @defaultValue `false`
+	 */
 	mouse: boolean;
 }
 
@@ -54,8 +122,22 @@ type HandleScaleOptionsInternal =
 		axisPressedMouseMove: AxisPressedMouseMoveOptions;
 	};
 
+/**
+ * Represents options for how the time and price axes react to mouse movements.
+ */
 export interface AxisPressedMouseMoveOptions {
+	/**
+	 * Enable scaling the time axis by holding down the left mouse button and moving the mouse.
+	 *
+	 * @defaultValue `true`
+	 */
 	time: boolean;
+
+	/**
+	 * Enable scaling the price axis by holding down the left mouse button and moving the mouse.
+	 *
+	 * @defaultValue `true`
+	 */
 	price: boolean;
 }
 
@@ -81,60 +163,150 @@ const enum BackgroundColorSide {
 
 type InvalidateHandler = (mask: InvalidateMask) => void;
 
+/**
+ * Represents a visible price scale's options.
+ *
+ * @see {@link PriceScaleOptions}
+ */
 export type VisiblePriceScaleOptions = PriceScaleOptions;
+
+/**
+ * Represents overlay price scale options.
+ */
 export type OverlayPriceScaleOptions = Omit<PriceScaleOptions, 'visible' | 'autoScale'>;
+
+/**
+ * Determine how to exit the tracking mode.
+ *
+ * By default, mobile users will long press to deactivate the scroll and have the ability to check values and dates.
+ * Another press is required to activate the scroll, be able to move left/right, zoom, etc.
+ */
+export const enum TrackingModeExitMode {
+	/**
+	 * Tracking Mode will be deactivated on touch end event.
+	 */
+	OnTouchEnd,
+	/**
+	 * Tracking Mode will be deactivated on the next tap event.
+	 */
+	OnNextTap,
+}
+
+/**
+ * Represent options for the tracking mode's behavior.
+ *
+ * Mobile users will not have the ability to see the values/dates like they do on desktop.
+ * To see it, they should enter the tracking mode. The tracking mode will deactivate the scrolling
+ * and make it possible to check values and dates.
+ */
+export interface TrackingModeOptions {
+	// eslint-disable-next-line tsdoc/syntax
+	/** @inheritdoc TrackingModeExitMode
+	 *
+	 * @defaultValue {@link TrackingModeExitMode.OnNextTap}
+	 */
+	exitMode: TrackingModeExitMode;
+}
 
 /**
  * Structure describing options of the chart. Series options are to be set separately
  */
 export interface ChartOptions {
-	/** Width of the chart */
+	/**
+	 * Width of the chart in pixels
+	 *
+	 * @defaultValue If `0` (default) or none value provided, then a size of the widget will be calculated based its container's size.
+	 */
 	width: number;
-	/** Height of the chart */
+
+	/**
+	 * Height of the chart in pixels
+	 *
+	 * @defaultValue If `0` (default) or none value provided, then a size of the widget will be calculated based its container's size.
+	 */
 	height: number;
-	/** Structure with watermark options */
+
+	/**
+	 * Watermark options.
+	 *
+	 * A watermark is a background label that includes a brief description of the drawn data. Any text can be added to it.
+	 *
+	 * Please make sure you enable it and set an appropriate font color and size to make your watermark visible in the background of the chart.
+	 * We recommend a semi-transparent color and a large font. Also note that watermark position can be aligned vertically and horizontally.
+	 */
 	watermark: WatermarkOptions;
-	/** Structure with layout options */
+
+	/**
+	 * Layout options
+	 */
 	layout: LayoutOptions;
 
 	/**
-	 * @deprecated options for price scales
-	 * @internal
+	 * Left price scale options
 	 */
-	priceScale: PriceScaleOptions;
-
-	/** Structure with price scale option for left price scale */
 	leftPriceScale: VisiblePriceScaleOptions;
-	/** Structure with price scale option for right price scale */
+	/**
+	 * Right price scale options
+	 */
 	rightPriceScale: VisiblePriceScaleOptions;
-	/** Structure describing default price scale options for overlays */
+	/**
+	 * Overlay price scale options
+	 */
 	overlayPriceScales: OverlayPriceScaleOptions;
-
-	/** Structure with time scale options */
+	/** Structure describing price scale options for non-primary pane */
+	nonPrimaryPriceScale: VisiblePriceScaleOptions;
+	/**
+	 * Time scale options
+	 */
 	timeScale: TimeScaleOptions;
-	/** Structure with crosshair options */
+
+	/**
+	 * The crosshair shows the intersection of the price and time scale values at any point on the chart.
+	 *
+	 */
 	crosshair: CrosshairOptions;
-	/** Structure with grid options */
+
+	/**
+	 * A grid is represented in the chart background as a vertical and horizontal lines drawn at the levels of visible marks of price and the time scales.
+	 */
 	grid: GridOptions;
-	/** Structure with localization options */
+
+	/**
+	 * Localization options.
+	 */
 	localization: LocalizationOptions;
-	/** Structure that describes scrolling behavior or boolean flag that disables/enables all kinds of scrolls */
+
+	/**
+	 * Scroll options, or a boolean flag that enables/disables scrolling
+	 */
 	handleScroll: HandleScrollOptions | boolean;
-	/** Structure that describes scaling behavior or boolean flag that disables/enables all kinds of scales */
+
+	/**
+	 * Scale options, or a boolean flag that enables/disables scaling
+	 */
 	handleScale: HandleScaleOptions | boolean;
-	/** Structure that describes kinetic scroll behavior */
+
+	/**
+	 * Kinetic scroll options
+	 */
 	kineticScroll: KineticScrollOptions;
+
+	// eslint-disable-next-line tsdoc/syntax
+	/** @inheritDoc TrackingModeOptions
+	 */
+	trackingMode: TrackingModeOptions;
+
 }
 
 export type ChartOptionsInternal =
-	Omit<ChartOptions, 'handleScroll' | 'handleScale' | 'priceScale' | 'layout'>
+	Omit<ChartOptions, 'handleScroll' | 'handleScale' | 'layout'>
 	& {
 		/** @public */
 		handleScroll: HandleScrollOptions;
 		/** @public */
 		handleScale: HandleScaleOptionsInternal;
 		/** @public */
-		layout: LayoutOptionsInternal;
+		layout: LayoutOptions;
 	};
 
 interface GradientColorsCache {
@@ -151,6 +323,7 @@ export class ChartModel implements IDestroyable {
 
 	private readonly _timeScale: TimeScale;
 	private readonly _panes: Pane[] = [];
+	private readonly _panesToIndex: Map<Pane, number> = new Map<Pane, number>();
 	private readonly _crosshair: Crosshair;
 	private readonly _magnet: Magnet;
 	private readonly _watermark: Watermark;
@@ -161,7 +334,7 @@ export class ChartModel implements IDestroyable {
 	private _initialTimeScrollPos: number | null = null;
 	private _hoveredSource: HoveredSource | null = null;
 	private readonly _priceScalesOptionsChanged: Delegate = new Delegate();
-	private _crosshairMoved: Delegate<TimePointIndex | null, Point | null> = new Delegate();
+	private _crosshairMoved: Delegate<TimePointIndex | null, Point & PaneInfo | null> = new Delegate();
 
 	private _suppressSeriesMoving: boolean = false;
 
@@ -247,6 +420,18 @@ export class ChartModel implements IDestroyable {
 	}
 
 	public applyPriceScaleOptions(priceScaleId: string, options: DeepPartial<PriceScaleOptions>): void {
+		if (priceScaleId === DefaultPriceScaleId.Left) {
+			this.applyOptions({
+				leftPriceScale: options,
+			});
+			return;
+		} else if (priceScaleId === DefaultPriceScaleId.Right) {
+			this.applyOptions({
+				rightPriceScale: options,
+			});
+			return;
+		}
+
 		const res = this.findPriceScale(priceScaleId);
 
 		if (res === null) {
@@ -290,7 +475,7 @@ export class ChartModel implements IDestroyable {
 		return this._crosshair;
 	}
 
-	public crosshairMoved(): ISubscription<TimePointIndex | null, Point | null> {
+	public crosshairMoved(): ISubscription<TimePointIndex | null, (Point & PaneInfo) | null> {
 		return this._crosshairMoved;
 	}
 
@@ -317,7 +502,9 @@ export class ChartModel implements IDestroyable {
 			}
 		}
 
-		const pane = new Pane(this._timeScale, this);
+		const actualIndex = (index === undefined) ? (this._panes.length - 1) + 1 : index;
+
+		const pane = new Pane(this._timeScale, this, actualIndex);
 
 		if (index !== undefined) {
 			this._panes.splice(index, 0, pane);
@@ -326,8 +513,7 @@ export class ChartModel implements IDestroyable {
 			this._panes.push(pane);
 		}
 
-		const actualIndex = (index === undefined) ? this._panes.length - 1 : index;
-
+		this._buildPaneIndexMapping();
 		// we always do autoscaling on the creation
 		// if autoscale option is true, it is ok, just recalculate by invalidation mask
 		// if autoscale option is false, autoscale anyway on the first draw
@@ -338,7 +524,6 @@ export class ChartModel implements IDestroyable {
 			autoScale: true,
 		});
 		this._invalidate(mask);
-
 		return pane;
 	}
 
@@ -370,7 +555,7 @@ export class ChartModel implements IDestroyable {
 
 		this._panes.splice(index, 1);
 		this._suppressSeriesMoving = false;
-
+		this._buildPaneIndexMapping();
 		const mask = new InvalidateMask(InvalidationLevel.Full);
 		this._invalidate(mask);
 	}
@@ -395,6 +580,7 @@ export class ChartModel implements IDestroyable {
 		this._panes[second] = firstPane;
 
 		this._suppressSeriesMoving = false;
+		this._buildPaneIndexMapping();
 		this._invalidate(new InvalidateMask(InvalidationLevel.Full));
 	}
 
@@ -530,7 +716,8 @@ export class ChartModel implements IDestroyable {
 		this._crosshair.setPosition(index, price, pane);
 
 		this.cursorUpdate();
-		this._crosshairMoved.fire(this._crosshair.appliedIndex(), { x, y });
+		const paneIndex = this.getPaneIndex(pane);
+		this._crosshairMoved.fire(this._crosshair.appliedIndex(), { x, y, paneIndex });
 	}
 
 	public clearCurrentPosition(): void {
@@ -552,11 +739,11 @@ export class ChartModel implements IDestroyable {
 		this._crosshair.updateAllViews();
 	}
 
-	public updateTimeScale(newBaseIndex: TimePointIndex | null, newPoints?: readonly TimeScalePoint[]): void {
+	public updateTimeScale(newBaseIndex: TimePointIndex | null, newPoints?: readonly TimeScalePoint[], firstChangedPointIndex?: number): void {
 		const oldFirstTime = this._timeScale.indexToTime(0 as TimePointIndex);
 
-		if (newPoints !== undefined) {
-			this._timeScale.update(newPoints);
+		if (newPoints !== undefined && firstChangedPointIndex !== undefined) {
+			this._timeScale.update(newPoints, firstChangedPointIndex);
 		}
 
 		const newFirstTime = this._timeScale.indexToTime(0 as TimePointIndex);
@@ -762,6 +949,10 @@ export class ChartModel implements IDestroyable {
 		return result;
 	}
 
+	public getPaneIndex(pane: Pane): number {
+		return this._panesToIndex.get(pane) ?? 0;
+	}
+
 	private _paneInvalidationMask(pane: Pane | null, level: InvalidationLevel): InvalidateMask {
 		const inv = new InvalidateMask(level);
 		if (pane !== null) {
@@ -817,5 +1008,12 @@ export class ChartModel implements IDestroyable {
 		}
 
 		return layoutOptions.background.color;
+	}
+
+	private _buildPaneIndexMapping(): void {
+		this._panesToIndex.clear();
+		for (let i = 0; i < this._panes.length; i++) {
+			this._panesToIndex.set(this._panes[i], i);
+		}
 	}
 }
